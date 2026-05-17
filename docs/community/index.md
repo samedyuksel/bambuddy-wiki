@@ -62,6 +62,23 @@ Home Assistant Add-on repository that packages Bambuddy's optional sidecar conta
 **Author:** [Jan-Tobias Zimpel](https://github.com/tzimpel) &middot; [Repository](https://github.com/tzimpel/homeassistant-bambuddy-sidecar-apps)
 </div>
 
+<div class="feature-card" markdown>
+### [:material-home-assistant: Home Assistant App (Bambuddy)](https://github.com/Spegeli/homeassistant-app-bambuddy)
+Home Assistant Add-on repository that packages Bambuddy itself as a first-class HA App for Supervised / HA OS installations. Ships three flavours &mdash; stable, beta, and daily &mdash; with hourly update checks, so new Bambuddy releases appear directly in the HA App Store. Data is persisted in `addon_configs` across upgrades. Note: HA Ingress is not supported (SPA + service worker constraints).
+
+**Author:** [Spegeli](https://github.com/Spegeli) &middot; [Repository](https://github.com/Spegeli/homeassistant-app-bambuddy)
+</div>
+
+<div class="feature-card" markdown>
+### [:material-puzzle-outline: HACS Integration](https://github.com/Spegeli/hacs_bambuddy)
+HACS custom integration that exposes a Bambuddy instance to Home Assistant. Adds each printer as a device with sensors (status, progress, layer, temperatures, fan speeds, HMS, diagnostics), a camera entity, the print-job cover image, pause / resume / stop / clear-plate buttons, a chamber-light switch, and a print-speed select. Also surfaces instance-level stats (total prints, filament used, disk usage).
+
+!!! warning "Under active development"
+    The author explicitly flags this integration as not yet production-ready &mdash; expect breaking changes and incomplete features. Track the repo for stable releases.
+
+**Author:** [Spegeli](https://github.com/Spegeli) &middot; [Repository](https://github.com/Spegeli/hacs_bambuddy)
+</div>
+
 </div>
 
 ---
