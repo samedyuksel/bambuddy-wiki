@@ -471,6 +471,50 @@ MJPEG streaming typically has 1-3 seconds of latency. This is normal and due to:
 - Try refreshing the stream
 - Check if camera works in Bambu Studio
 
+### Use go2rtc as a relay (workaround)
+
+When the built-in stream is unreliable for your printer or network — connects then drops, shows black after a few seconds, won't connect at all behind a reverse proxy, or works in Bambu Studio but not in Bambuddy — you can run [go2rtc](https://github.com/AlexxIT/go2rtc) as a relay between the printer and Bambuddy. go2rtc handles the RTSPS handshake, holds the single camera connection the printer allows, and exposes a plain MJPEG URL that Bambuddy consumes via the **External Camera** feature above.
+
+This bypasses Bambuddy's built-in RTSP / chamber-image stream entirely. Useful for:
+
+- Printers behind firmware quirks that cause the built-in stream to drop after a few seconds
+- Cross-subnet setups where Bambuddy can reach the printer for MQTT/FTP but the camera handshake is flaky
+- Reverse-proxy deployments where the MJPEG response gets buffered upstream
+- Sharing the single allowed camera connection across multiple clients (Frigate, OBS, Home Assistant, Bambuddy) — go2rtc holds one upstream, fans out N downstreams
+
+#### go2rtc config (P2S example)
+
+Add to your `go2rtc.yaml`. Replace `SERIAL#` with your printer's serial number (used as the RTSPS password) and `192.168.101.41` with your printer's IP:
+
+```yaml
+streams:
+  # Primary RTSPS pull from the printer — one connection, held open by go2rtc.
+  p2s_camera:
+    - rtsps://bblp:SERIAL#@192.168.101.41:322/streaming/live/1
+  # Transcode to MJPEG at 2 fps for Bambuddy's External Camera.
+  p2s_mjpeg:
+    - "ffmpeg:http://127.0.0.1:1984/api/stream.mp4?src=p2s_camera#video=mjpeg#args=-r 2"
+```
+
+The same shape works for any Bambu printer that speaks RTSPS on port `322` — **X1 / X1C / X1E / X2D / P2S / H2C / H2D / H2D Pro / H2S**. A1 / A1 Mini / P1P / P1S use a different proprietary chamber-image protocol on port `6000` and are NOT addressable through go2rtc this way; if your built-in stream fails on one of those, go2rtc isn't the workaround.
+
+#### Bambuddy setup
+
+1. Find the MJPEG URL go2rtc is now serving — substitute go2rtc's host IP for `192.168.101.29`:
+
+   ```
+   http://192.168.101.29:1984/api/stream.mjpeg?src=p2s_mjpeg
+   ```
+
+2. In Bambuddy → **Settings** → **General** → **Camera** → enable **External Camera** for the affected printer.
+3. Paste the go2rtc URL above into the **Camera URL** field, set type to **MJPEG**, and click **Test**.
+4. Save.
+
+From here Bambuddy will use the go2rtc stream for live viewing, notification thumbnails, finish photos, and (if you've enabled them) layer timelapse and plate-empty detection — everything that previously hit the built-in camera path.
+
+!!! tip "Optional: separate snapshot endpoint"
+    go2rtc also exposes `/api/frame.jpeg?src=<name>` — a fast single-frame endpoint that's more reliable than reading one frame from the MJPEG stream. If your camera notifications or finish photos look slow or come up black, set this URL in the **Snapshot URL** field below the live-stream URL on the same External Camera config screen. See the [Snapshot URL override tip](#external-cameras) above.
+
 ---
 
 ## :material-api: API Endpoints
