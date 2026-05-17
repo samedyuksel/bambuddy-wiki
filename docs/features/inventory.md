@@ -265,7 +265,7 @@ Each spool's `weight_used` counter accumulates over the lifetime of the spool an
 
 Both actions leave the spool itself untouched: the label weight, remaining weight calculation, AMS lock flag (`weight_locked`), cost-per-kg, and storage location are not changed. Only the accumulated consumption counter goes back to 0. Future prints continue to increment normally — unlike manually editing the *Current Weight* field in the spool form, which auto-locks the spool and stops AMS auto-sync.
 
-The bulk variant is the recommended way to clean-slate the **Total Consumed** stat (for example, after deleting all archives on a test instance) so subsequent prints track from zero. Spoolman-mode users don't see either button — Spoolman manages its own per-filament usage accounting.
+The bulk variant is the recommended way to clean-slate the **Total Consumed** stat (for example, after deleting all archives on a test instance) so subsequent prints track from zero. **Spoolman users get the same actions** — the request routes to Spoolman's PATCH `/spool/{id}` with `used_weight: 0` for each target instead of the built-in inventory table, but the UX is identical.
 
 ---
 
