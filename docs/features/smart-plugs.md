@@ -545,6 +545,25 @@ Automatically turn off after prints:
 
 By default, auto-off is **one-shot** — it disables itself after each print and must be re-enabled manually. To keep auto-off active between prints, enable the **Keep Enabled** toggle under the Auto Off settings. This is useful for accessories like chamber filters (e.g., BentoBox on a Home Assistant switch) that should always power off when a print completes.
 
+### Auto Off After AMS Drying
+
+Cut power automatically after an AMS filament drying cycle completes. Independent of the print-finish Auto Off above — drying-finish has its own toggle and its own delay because the AMS chamber stays warm longer than the hotend after a dry cycle.
+
+1. On the smart plug card, enable **Auto Off After Drying**
+2. Set **Drying delay (minutes)** — the default is **10 minutes** to give the AMS time to cool off before power is cut
+3. After any AMS attached to the linked printer finishes drying:
+    - Wait the configured number of minutes
+    - Turn off the plug
+
+Bambuddy detects drying completion at the MQTT layer by watching for the AMS `dry_time` field falling from a positive value to `0`, so the toggle fires for:
+
+- :material-check: Queue-triggered auto-drying
+- :material-check: Ambient (humidity-threshold) auto-drying
+- :material-check: Manually-started drying from the printer card
+
+!!! note "Per-AMS routing"
+    The trigger is **plug-vs-printer-level**, not per-AMS. If your printer has multiple AMS units on one plug, the auto-off fires whenever **any** of them finishes a cycle. Per-AMS targeting (separate plug for AMS only, or different plugs for AMS 0 vs AMS 1 on dual-AMS printers) is not currently supported.
+
 ### Safety Checks
 
 Auto power-off includes safety checks:
