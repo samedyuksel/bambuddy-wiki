@@ -425,7 +425,54 @@ When a stall is detected:
 
 ---
 
+## :material-stethoscope: Built-in Camera Diagnostic
+
+Before opening a ticket, click **Diagnose** in the camera viewer. The diagnostic runs staged checks against your printer's camera path and tells you exactly which stage failed and what to do about it.
+
+### How to open it
+
+Two entry points, both in the embedded camera viewer:
+
+- **Stethoscope icon** in the control bar, between Refresh and Fullscreen &mdash; available any time the camera is open, even when the stream is working. Use this to test before sending a print, after a firmware update, or to confirm the camera link is healthy.
+- **Diagnose button** next to **Retry** in the "Camera unavailable" overlay &mdash; shown when the stream is in an error state.
+
+### What it checks
+
+| Stage | What it tests |
+|-------|---------------|
+| **Network reachability** | Opens a TCP socket to the printer's camera port (`322` for X1 / X1C / X1E / X2D / P2S / H2 series, `6000` for A1 / A1 Mini / P1P / P1S). Distinguishes timeout from refused so the remediation hint is specific. |
+| **Frame capture** | Captures one JPEG end-to-end via the same pipeline that powers `/camera/snapshot`. Covers authentication, protocol handshake, and the first keyframe in one step. |
+
+If the camera is currently streaming with a fresh frame, the diagnostic short-circuits with **Live stream active** and reports success without opening a fresh socket &mdash; opening a second socket would kick the live viewer off on most Bambu firmwares.
+
+### What the result tells you
+
+The modal renders each stage with a green check, red X, or grey "skipped" marker, plus a translated remediation message at the bottom. Common outcomes:
+
+| Summary | What happened | What to do |
+|---------|---------------|------------|
+| **Camera is working** | All stages passed. | Nothing &mdash; the camera path is healthy. |
+| **Live stream active** | Someone is already watching the camera. | Nothing &mdash; real-world proof beats any synthetic test. |
+| **Printer not reachable** | TCP connect timed out or returned "no route to host". | Check the printer's IP address, that it's powered on, and that Bambuddy can reach it on the network. |
+| **Camera port closed** | TCP connect was refused &mdash; printer is up, camera port isn't accepting. | Enable **LAN-only mode** and **Developer Mode** in the printer's settings. |
+| **No frames received** | TCP connect succeeded but no JPEG came back within 15 seconds. | Check that the camera is enabled in the printer's settings. If you just updated firmware, try power-cycling the printer. |
+
+### Metadata for support tickets
+
+The bottom row of the modal shows three values used for triage:
+
+- **Protocol** &mdash; `rtsp` (X1 / H2 / P2 family) or `chamber_image` (A1 / P1 family)
+- **Port** &mdash; `322` or `6000`
+- **Profile** &mdash; `default` (the historical X1/H2 fast-startup tuning) or a model name (e.g. `P2S`) when Bambuddy has model-specific tuning for that camera
+
+If you do end up opening a ticket, a screenshot of this modal is more useful than a long log paste &mdash; it tells me which stage failed, how long it took, and which tuning profile your printer is on.
+
+---
+
 ## :material-help-circle: Troubleshooting
+
+!!! tip "Try the built-in diagnostic first"
+    The [camera diagnostic](#built-in-camera-diagnostic) above will tell you which of the steps below is the actual fix in 5&ndash;15 seconds. Skip to it before working through the checklist.
 
 ### Stream Won't Start
 
@@ -526,7 +573,8 @@ For developers and integrations:
 | `/api/v1/printers/{id}/camera/stream` | GET | MJPEG stream |
 | `/api/v1/printers/{id}/camera/snapshot` | GET | Single JPEG frame |
 | `/api/v1/printers/{id}/camera/stop` | POST | Stop active streams |
-| `/api/v1/printers/{id}/camera/test` | GET | Test camera connection |
+| `/api/v1/printers/{id}/camera/test` | GET | Test camera connection (returns success/failure only) |
+| `/api/v1/printers/{id}/camera/diagnose` | POST | Run staged diagnostic (returns per-stage results and remediation code) |
 
 ### Example: Embed in OBS
 
