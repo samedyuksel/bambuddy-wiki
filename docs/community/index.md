@@ -96,7 +96,7 @@ FilaMan driver plugin that connects [FilaMan](https://www.filaman.app) to Bambud
 
 <div class="feature-card" markdown>
 ### [:material-database-import-outline: CSV Spool Import](https://github.com/bsaunder/bambuddy_spoolimport)
-Python script that bulk-imports filament spools into Bambuddy from a CSV file. Maps your existing spool IDs to Bambuddy catalog IDs and pushes them through the public REST API &mdash; useful for migrating from other inventory tools.
+Python toolkit for managing Bambuddy's filament inventory from the command line. Bulk-imports spools from a CSV file (mapping your existing spool IDs to Bambuddy catalog IDs), lists existing spools, and generates printable QR-code PDF labels for physical spool identification. Talks to Bambuddy through its public REST API with an API key &mdash; useful for migrating from other inventory tools.
 
 **Author:** [bsaunder](https://github.com/bsaunder) &middot; [Repository](https://github.com/bsaunder/bambuddy_spoolimport)
 </div>
