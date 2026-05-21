@@ -15,6 +15,7 @@ This is **opt-in**. If you don't run the sidecar, all "Open in Slicer" flows con
 
 - You run Bambuddy on a headless box (NAS, mini-PC, RPi 5) and want one-click slicing without bouncing through a desktop machine.
 - You want re-slice on existing archives (e.g. swap filament, change layer height) and have the result land back in Bambuddy automatically.
+- You downloaded a model sliced for one printer (a MakerWorld import, a 3MF from a friend) and want to re-slice it for a **different** printer model &mdash; just pick the target printer in the slice modal.
 - You want a "Print" button on MakerWorld imports that goes straight to the printer instead of opening Bambu Studio.
 
 If you only slice from Bambu Studio / OrcaSlicer on your workstation and use Bambuddy as a print log, you don't need this.
@@ -126,6 +127,12 @@ Slice opens a modal with **Printer**, **Process**, and one or more **Filament** 
 - **Multi-color plate** &rarr; one dropdown per AMS slot the print uses, each labeled `Filament N (PLA)` with a colour swatch.
 
 Pre-pick is automatic: each filament dropdown auto-selects against your imported / cloud / standard presets by exact `(filament_type, filament_colour)` match. You can override any pick before slicing.
+
+### Re-slicing for a different printer
+
+The **Printer** dropdown is not constrained by the printer the source 3MF was originally authored for. A 3MF sliced for an X1C can be re-sliced for an H2D (or any other model), and vice versa &mdash; pick the target printer and slice as normal. The slicer regenerates the G-code from scratch using the target printer's bed size, kinematics, nozzle count, and start/end G-code; only the model geometry and paint/colour assignments carry over from the source file.
+
+This makes [MakerWorld](makerworld.md) imports work regardless of which printer the model's creator used.
 
 ### Plate picker
 
