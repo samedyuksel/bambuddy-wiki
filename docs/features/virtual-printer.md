@@ -15,6 +15,9 @@ keywords:
   - proxy mode
   - tailscale
   - ssdp
+  - setup check
+  - diagnostic
+  - ca certificate
 ---
 
 # Virtual Printer
@@ -114,15 +117,21 @@ Each virtual printer uses these ports on its dedicated bind IP:
     On macOS and Windows, Bambu Studio and OrcaSlicer **do not use the system certificate store** — you must add the certificate directly to the slicer's `printer.cer` file.
     On Linux the right approach depends on how you installed the slicer: native `.deb` / `.rpm` packages can use the system CA store, but AppImage builds typically need the bundled `printer.cer` edited directly. See the [Linux tab](#step-2-append-the-bambuddy-ca-certificate-to-slicer) for both paths.
 
-### Step 1: Locate the CA Certificate
+### Step 1: Get the CA Certificate
 
-The Bambuddy CA certificate is at:
+The easiest way is straight from the Bambuddy UI — no command line needed:
 
-- **Native install**: `virtual_printer/certs/bbl_ca.crt`
-- **Docker**: Extract with `docker cp bambuddy:/app/data/virtual_printer/certs/bbl_ca.crt ./bambuddy-ca.crt`
+1. Go to **Settings → Virtual Printer**
+2. In the **Slicer certificate** card, click **Download** to save `bambuddy-virtual-printer-ca.crt`, or **Copy** to put the PEM text on your clipboard
+3. The card also shows the certificate's **SHA-256 fingerprint**, so you can verify later that the slicer has the right one
 
-!!! note "Certificate Generation"
-    The certificate is only generated when you first enable the virtual printer in the UI. If the file doesn't exist, enable the virtual printer first.
+This is the shared CA that every virtual printer presents — you import it once and it covers all of them. It is generated automatically the first time you open the Virtual Printer settings, so you do **not** need to enable a virtual printer first.
+
+!!! note "Getting it from the filesystem instead"
+    If you prefer the command line, the CA certificate file is at:
+
+    - **Native install**: `virtual_printer/certs/bbl_ca.crt`
+    - **Docker**: `docker cp bambuddy:/app/data/virtual_printer/certs/bbl_ca.crt ./bambuddy-ca.crt`
 
 ### Step 2: Append the Bambuddy CA Certificate to Slicer
 
@@ -1351,9 +1360,32 @@ For setups where Bambuddy has interfaces on two networks (e.g., printer on LAN A
 
 ---
 
+## Setup Check
+
+Every virtual printer card has a **stethoscope button** (next to the delete button) that runs a built-in setup diagnostic. Reach for it whenever a virtual printer doesn't show up in the slicer or won't accept a print — it checks the things that usually go wrong so you don't have to guess.
+
+The check probes, from Bambuddy's side:
+
+| Check | What it confirms |
+|-------|------------------|
+| **Virtual printer enabled** | The VP is switched on |
+| **Services running** | Its FTP / MQTT / discovery services actually started |
+| **Bind network interface** | The bind IP still matches a live interface on the host — a stale bind IP after a DHCP lease change or a container restart is a common cause of "it vanished" |
+| **Access code set** | Non-proxy modes have an access code configured |
+| **Target printer** | Proxy mode has a target printer selected and reachable |
+| **Service ports** | A live connection test of the FTP (990), MQTT (8883) and discovery (3002) ports on the bind IP. This is the decisive check — it confirms a service is genuinely listening, catching a port conflict that a "Running" status alone would hide |
+| **TLS certificate** | The certificate chain exists on disk |
+
+Each row is marked pass, fail, warning or skipped, with a short explanation of what to fix. After making a change, hit **Run again** to re-check.
+
+---
+
 ## Troubleshooting
 
 ### Slicer Can't Find or Connect to Virtual Printer
+
+!!! tip "Run the Setup Check first"
+    Click the **stethoscope button** on the virtual printer card — the [Setup Check](#setup-check) pinpoints most of the problems below automatically (disabled VP, dead service port, stale bind IP, missing access code).
 
 1. **Check virtual printer is enabled** and showing "Running" status in Bambuddy Settings
 2. **Verify bind/detect ports are reachable** — the slicer needs port 3000 or 3002 for the handshake:
@@ -1420,15 +1452,15 @@ This typically means the slicer doesn't trust the virtual printer's certificate.
 
 2. **Wrong certificate?** If you have multiple Bambuddy hosts or reinstalled, you must update the certificate. See [Step 2](#step-2-append-the-bambuddy-ca-certificate-to-slicer).
 
-3. **Verify certificate fingerprints match**:
+3. **Verify certificate fingerprints match**. The **Slicer certificate** card in Settings → Virtual Printer shows the CA's SHA-256 fingerprint directly — the quickest reference. To read it from the server instead:
    ```bash
    # On Bambuddy server (Docker)
-   docker exec bambuddy openssl x509 -in /app/data/virtual_printer/certs/bbl_ca.crt -noout -fingerprint -sha1
+   docker exec bambuddy openssl x509 -in /app/data/virtual_printer/certs/bbl_ca.crt -noout -fingerprint -sha256
 
    # On Bambuddy server (native)
-   openssl x509 -in virtual_printer/certs/bbl_ca.crt -noout -fingerprint -sha1
+   openssl x509 -in virtual_printer/certs/bbl_ca.crt -noout -fingerprint -sha256
    ```
-   Verify this fingerprint appears in one of the certificates in your slicer's `printer.cer`.
+   Verify this fingerprint matches the one on the card, and that the CA appears in your slicer's `printer.cer`.
 
 4. **Fully restart the slicer** — Cmd+Q on macOS, or End Task on Windows. Just closing the window is not enough.
 
