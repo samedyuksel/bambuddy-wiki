@@ -143,9 +143,29 @@ The **Printer** dropdown defaults to the printer the source 3MF was prepared for
 
 This makes [MakerWorld](makerworld.md) imports work regardless of which printer the model's creator used.
 
+#### Cross-class re-slice (single-nozzle ↔ H2D)
+
+Re-slicing between a single-nozzle printer (X1C, P1S, A1, P2S, …) and a dual-nozzle printer (H2D / H2D Pro) used to fail with cryptic slicer errors &mdash; *"G-code in unprintable area of multi-extruder printers"* when objects fell into the H2D's per-nozzle dead zones, or a hard slicer crash on multi-color projects. Bambuddy now detects the class change and auto-enables the slicer's **arrange** pass so objects laid out for the source bed are repositioned safely on the target. No extra setting; just pick the new printer and slice.
+
+Two related behaviours come along for the ride:
+
+- **Heterogeneous unused filaments are auto-substituted.** If the modal serves an ABS default into a slot the picked plate doesn't paint with, Bambuddy substitutes the slot-1 filament before slicing so the slicer's loaded-filament temperature validator doesn't reject a PLA print because of an ABS slot the G-code never touches.
+- **The re-sliced archive's card shows a sensible cover image.** With `--arrange` on, the slicer doesn't always regenerate the per-plate preview; Bambuddy falls back to the source archive's `plate_N.png` (a render of what the same plate looked like on the source printer) so the card shows the model rather than a blank slot or MakerWorld marketing art.
+
 ### Plate picker
 
 For multi-plate 3MFs the modal shows a plate picker first; pick the plate you want to slice, then the preset dropdowns appear for that plate's filament needs.
+
+### "Slice all plates" toggle
+
+Multi-plate projects &mdash; parted statues, multi-part kits, calibration stacks &mdash; get a **Slice all N plates** checkbox in the action bar. With it on:
+
+- Filament dropdowns expand to the *union* of every plate's slot needs (a slot a plate-2 part paints with but plate 1 doesn't is now selectable; without the toggle the modal only showed the picked plate's slots).
+- The action button label flips to "Slice all N plates".
+- The slicer produces a **single `.gcode.3mf`** with every plate's G-code inside (one Bambuddy archive, all plates).
+- For cross-class slice-all, Bambuddy loops per plate behind the scenes (the slicer's `--arrange` is project-wide and would otherwise consolidate every plate's objects onto one bed) and merges the per-plate outputs into one multi-plate 3MF locally. The progress toast shows "Plate 2 of 5 &mdash; Generating G-code (47%)" through the loop. Wall-clock cost is roughly N × the per-plate slice time.
+
+The toggle is hidden on STL / single-plate sources where it'd be meaningless.
 
 ### How Bambuddy knows the per-plate filament list
 
