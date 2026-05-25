@@ -18,8 +18,7 @@ register Bambuddy as a Windows Service.
 Run PowerShell as Administrator and start the installer:
 
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force
-.\Install-Bambuddy.ps1
+powershell -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/maziggy/bambuddy/main/install/windows-installer.ps1 -OutFile windows-installer.ps1; .\windows-installer.ps1"
 ```
 
 The installer will guide you through the setup.
