@@ -51,10 +51,13 @@ By default, Bambuddy is installed to:
 C:\Bambuddy
 ```
 
-This path is recommended because Bambuddy is a Git-based Python application that
-creates a virtual environment, writes logs, and can be updated later.
+The default installation path is `C:\Bambuddy` instead of
+`C:\Program Files\Bambuddy` because Bambuddy is a Git-based Python application
+that creates and updates a virtual environment, writes log files, and may be
+updated through `git pull`.
 
-Using `C:\Bambuddy` avoids common permission issues with `C:\Program Files`.
+Using `C:\Bambuddy` avoids common permission, UAC, path escaping, and
+service-context issues on Windows.
 
 !!! info "Custom path supported"
     During setup, the installer asks whether the default path should be used.
