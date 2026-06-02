@@ -125,6 +125,7 @@ volumes:
 | `TRUSTED_FRAME_ORIGINS` | _(none)_ | Comma-separated origins permitted to embed Bambuddy via `<iframe>` (e.g., `http://homeassistant.local:8123`). Required for the HA Webpage dashboard panel. |
 | `DATABASE_URL` | _(none)_ | External PostgreSQL connection string (e.g., `postgresql+asyncpg://user:pass@host:5432/bambuddy`). Uses built-in SQLite when not set. |
 | `USE_SYSTEM_TRUST_STORE` | _(none)_ | Enables the use of the System Trust Store for HTTPS requests |
+| `BAMBUDDY_EXTERNAL_ROOTS` | _(none)_ | Colon-separated absolute paths permitted as **external library folders** (see [File Manager → External folders](../features/file-manager.md#external-folders)). Empty default disables the feature; Bambuddy's own data / log / static directories are always rejected even if the operator over-broadens this list. |
 
 !!! info "Home Assistant Integration"
     When both `HA_URL` and `HA_TOKEN` are set, the Home Assistant integration is automatically enabled and configured. The URL and token fields become read-only in the UI. This is primarily used by the [Home Assistant add-on](https://github.com/hobbypunk90/homeassistant-addon-bambuddy/) for zero-configuration setup.
@@ -183,6 +184,32 @@ volumes:
     ```
 
     Bambuddy will automatically create all tables on first startup. Backup/restore uses `pg_dump`/`pg_restore` instead of file copy.
+
+!!! tip "External library folders (BAMBUDDY_EXTERNAL_ROOTS)"
+    The **File Manager → Add external folder** feature lets users mount host directories (NAS shares, USB drives, local prints directories) into the library without copying files. As of v0.2.5b1 this is **opt-in for operators** — set `BAMBUDDY_EXTERNAL_ROOTS` to a colon-separated list of host paths (inside the container) that users are permitted to register. Empty (the default) disables the feature.
+
+    Operators must also bind-mount the host directory into the container at the same path declared in `BAMBUDDY_EXTERNAL_ROOTS`. The Bambuddy data / log / static directories cannot appear as external roots even if you list them here — they are always rejected as a hard safeguard against cross-user data exposure.
+
+    Example: allow users to mount one NAS share read-only:
+
+    ```yaml
+    volumes:
+      - /mnt/nas/3d-prints:/external/nas:ro
+    environment:
+      - BAMBUDDY_EXTERNAL_ROOTS=/external/nas
+    ```
+
+    Example: allow two roots (NAS + local projects), comma-separated host paths but colon-separated in-container:
+
+    ```yaml
+    volumes:
+      - /mnt/nas/3d-prints:/external/nas:ro
+      - /srv/library:/external/projects:ro
+    environment:
+      - BAMBUDDY_EXTERNAL_ROOTS=/external/nas:/external/projects
+    ```
+
+    `:ro` is recommended unless you want users uploading files back into the host share. Why operator-opt-in? See [the security advisory note](../features/file-manager.md#external-folders-security-stance) — pre-v0.2.5b1 versions used a denylist of system paths which left every other host location implicitly mountable. The allowlist makes mounting an explicit, auditable decision per deployment.
 
 ### Custom Port
 

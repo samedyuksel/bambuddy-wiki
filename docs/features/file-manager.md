@@ -26,6 +26,80 @@ The File Manager lets you:
 
 ---
 
+## :material-folder-network: External Folders
+
+External folders let you surface a host directory (a NAS mount, a USB
+drive, a local prints folder) inside Bambuddy's library without
+copying any files. They appear alongside the managed library and can be
+browsed, slice-previewed, and printed from like any other folder.
+
+### Operator configuration
+
+As of v0.2.5b1 (GHSA-r2qv follow-up) the feature is **opt-in for
+operators**. The `BAMBUDDY_EXTERNAL_ROOTS` environment variable
+controls which host paths users are permitted to register as external
+folders:
+
+| Setting | Effect |
+|---------|--------|
+| `BAMBUDDY_EXTERNAL_ROOTS=` (empty / unset) | Feature disabled — `POST /api/v1/library/folders/external` returns HTTP 400 with a hint pointing at this variable. |
+| `BAMBUDDY_EXTERNAL_ROOTS=/mnt/nas/prints` | Single allowed root — users can register any path inside `/mnt/nas/prints`. |
+| `BAMBUDDY_EXTERNAL_ROOTS=/mnt/nas/prints:/srv/library` | Two allowed roots — colon-separated absolute paths. |
+
+In Docker, also bind-mount the host path into the container at the
+same path you list in `BAMBUDDY_EXTERNAL_ROOTS` — see the
+[Docker → External library folders](../getting-started/docker.md#external-library-folders-bambuddy_external_roots)
+tip for a complete example. Read-only (`:ro`) bind mounts are
+recommended unless you want users uploading files back into the host
+share.
+
+### Registering an external folder
+
+With the env var set, any user with `Settings → Update` permission can:
+
+1. Open **File Manager** → **Add external folder** (top right).
+2. Enter a name and the absolute path inside the container (must be
+   within `BAMBUDDY_EXTERNAL_ROOTS`).
+3. Choose **Read-only** to prevent uploads to this folder (recommended
+   for shared NAS mounts), or leave unchecked for read/write.
+4. Click **Add**. Bambuddy scans the folder and surfaces 3MFs, STLs,
+   gcode, and image files.
+
+The folder appears in the sidebar with the :material-folder-network:
+icon and persists across restarts. Deleting an external folder from
+the UI only removes Bambuddy's index entry — the host files are not
+touched.
+
+### External folders security stance
+
+The pre-v0.2.5b1 implementation used a **denylist** of system
+directories (`/proc`, `/sys`, `/dev`, ...). Everything else passed,
+including `/data` (Bambuddy's own data directory containing other
+users' archives), `/root`, arbitrary NFS/SMB mounts the operator did
+not realise the container could see, and the Bambuddy log directory.
+That was the same fail-open-on-growth shape as the
+[GHSA-r2qv-8222-hqg3](https://github.com/maziggy/bambuddy/security/advisories/GHSA-r2qv-8222-hqg3)
+finding on the permission system: an attacker did not need a CVE, the
+codebase grew into the exposure on its own as new file extensions
+became scannable.
+
+The v0.2.5b1 fix replaces the denylist with the
+`BAMBUDDY_EXTERNAL_ROOTS` allowlist. Bambuddy's own data / log /
+static / archive directories are hardcode-rejected even if the
+operator over-broadens the allowlist (e.g. accidentally sets `/` for
+testing), so configuration mistakes cannot expose internal state. The
+route is additionally gated on `SETTINGS_UPDATE` (was `LIBRARY_UPLOAD`)
+since registering a host filesystem path is an operator-class
+capability that crosses user boundaries.
+
+If an existing deployment used the feature before v0.2.5b1, the
+external folders remain in the database after upgrade but **stop
+working** until the operator sets `BAMBUDDY_EXTERNAL_ROOTS` to cover
+the paths in use. The UI surfaces a clear error pointing at the
+variable.
+
+---
+
 ## :material-folder-open: Accessing File Manager
 
 1. Click **File Manager** in the sidebar

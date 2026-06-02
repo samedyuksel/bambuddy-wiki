@@ -62,15 +62,29 @@ API keys allow external applications to:
 
 API keys are intentionally **scoped narrowly** — they cannot perform
 administrative operations (user management, full settings updates, backup
-restore, firmware installs). The five toggles you can set on a key are:
+restore, firmware installs). The seven toggles you can set on a key are:
 
 | Permission | Allows |
 |------------|--------|
-| **Read Status** | Read printer state, archives, queue, and (scrubbed) settings |
-| **Manage Queue** | Add to / remove from / reorder the print queue |
-| **Control Printer** | Start, pause, resume, stop prints |
+| **Read Status** | Read printer state, archives, queue, library listings, projects, filaments, inventory, maintenance, notifications, K-profiles, AMS history, stats, system info, camera, and (scrubbed) settings |
+| **Manage Queue** | Add to / remove from / reorder the print queue; reprint archives |
+| **Control Printer** | Start, pause, resume, stop prints; send files to the printer; AMS RFID re-read; clear-plate confirmation; smart-plug on/off |
+| **Manage Library** | Upload new files; rename and delete your own library entries; import models from MakerWorld |
+| **Manage Inventory** | Create / update / delete spools, the spool/color catalogue, forecast SKU settings. Required for SpoolBuddy kiosks (NFC tag scan, scale readings, kiosk system commands like reboot/update). |
 | **Allow Cloud Access** | Read the owner's Bambu Cloud presets/filaments via `/cloud/*` (see below) |
 | **Update Electricity Price** | Push a new per-kWh tariff to `POST /settings/electricity-price` (see [Energy Tracking](energy.md#dynamic-electricity-price-from-home-assistant)) — narrowly scoped, the only settings field writable via API key |
+
+!!! warning "Allowlist model since 0.2.4.5 (GHSA-r2qv-8222-hqg3)"
+    Earlier Bambuddy versions gated API keys via a small denylist of
+    administrative permissions. Anything outside that list — including
+    physical printer control, queue writes, library uploads, and inventory
+    writes — was reachable from *any* valid key regardless of which
+    checkboxes you ticked, because the seven toggles were not actually
+    enforced outside the legacy `/webhook/*` endpoints. Starting in
+    0.2.4.5, every Bambuddy endpoint maps to exactly one of the toggles
+    above (or is admin-only and rejects all API keys). A key with no
+    toggles ticked can hit no endpoints; a key with only **Read Status**
+    cannot stop a print, edit the queue, upload files, or change a spool.
 
 !!! info "Why no general 'Write Settings' or 'Admin' permission?"
     The `PATCH /settings` route can rewrite SMTP/LDAP/MQTT credentials, the
@@ -85,9 +99,27 @@ restore, firmware installs). The five toggles you can set on a key are:
 
 Only grant permissions that are needed:
 
-- Read-only for dashboards
-- Control for automation
-- Tariff scope only on the HA-integration key
+- **Read-only dashboards**: Read Status only.
+- **Home Assistant queue automation**: Read Status + Manage Queue.
+- **Home Assistant queue + start prints**: + Control Printer.
+- **Headless slicer / library-uploading automation**: + Manage Library.
+- **SpoolBuddy kiosks (bundled installs handle this for you)**: + Manage Inventory.
+- **HA dynamic-tariff integration**: + Update Electricity Price.
+- **Bambu Cloud slicing pipelines**: + Allow Cloud Access (requires owner sign-in).
+
+### Upgrade Notes
+
+When upgrading from a pre-0.2.4.5 install:
+
+- Existing keys are backfilled: **Manage Library** and **Manage Inventory**
+  default to whatever **Manage Queue** was set to (so "queue-only" keys keep
+  working for the upload+queue workflow they already used, while hardened
+  "read-only" keys do not silently gain write capabilities).
+- The bundled SpoolBuddy kiosk key is explicitly granted **Manage Inventory**
+  by the CLI (it needs to write NFC scans and scale readings).
+- If a previously-working integration starts returning 403, the missing
+  toggle is named in the response body — tick it in **Settings → API
+  Keys**, regenerate or update the key, and retry.
 
 ---
 
