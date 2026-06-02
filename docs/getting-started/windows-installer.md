@@ -238,6 +238,14 @@ For unattended local-only installs, use:
 .\windows-installer.ps1 -Yes -LocalOnly
 ```
 
+!!! warning "Bambuddy is unauthenticated by default"
+    If you bind to `0.0.0.0`, anyone on your LAN (including guest devices and any
+    active VPN tunnels) can reach the Bambuddy UI without credentials. Open
+    **Settings → Security** and enable authentication before relying on LAN
+    access. The installer's firewall rule covers only the **Domain** and
+    **Private** profiles, so Public-Wi-Fi exposure is blocked at the OS level
+    even when Bambuddy itself is bound to all interfaces.
+
 ---
 
 ## :material-shield-lock: Firewall Rule
@@ -251,9 +259,13 @@ Example rule:
 | Name | `Bambuddy TCP 8000` |
 | Direction | Inbound |
 | Protocol | TCP |
+| Profile | Domain, Private |
 | Action | Allow |
 
-If Bambuddy should only be accessed locally, the firewall rule is optional.
+The rule intentionally excludes the **Public** profile so that Bambuddy is not
+reachable on untrusted networks (cafe, hotel, airport Wi-Fi) where Windows tags
+the connection as Public. If Bambuddy should only be accessed locally, the
+firewall rule is optional.
 
 ---
 
@@ -411,14 +423,16 @@ SERVICE_AUTO_START
 The process restart behavior is configured as:
 
 ```text
-AppExit Default Exit
+AppExit Default Restart
 AppExit 0 Exit
-AppExit 1 Restart
 AppRestartDelay 5000
 ```
 
-This avoids restarting after normal service stops while still restarting after a
-known non-zero crash exit.
+Exit code `0` is treated as a clean stop (the service stays stopped), and any
+other exit — including segfaults, OOM kills, and unhandled signals — triggers a
+restart after a 5-second delay. This matches the Linux installer's
+`Restart=on-failure` semantics, so the production resilience is the same on
+both platforms.
 
 ---
 
