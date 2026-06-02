@@ -43,6 +43,20 @@ The easiest way to install Bambuddy. Interactive scripts that handle everything 
     curl -fsSL https://raw.githubusercontent.com/maziggy/bambuddy/main/install/install.sh -o install.sh && chmod +x install.sh && ./install.sh
     ```
 
+=== ":material-microsoft-windows: Windows"
+
+    ```powershell
+    powershell -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/maziggy/bambuddy/main/install/windows-installer.ps1 -OutFile windows-installer.ps1; .\windows-installer.ps1"
+    ```
+
+    For unattended installs, append parameters after `.\windows-installer.ps1`:
+
+    ```powershell
+    powershell -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/maziggy/bambuddy/main/install/windows-installer.ps1 -OutFile windows-installer.ps1; .\windows-installer.ps1 -Port 8010 -Yes"
+    ```
+
+    [:material-arrow-right: Full Native Windows Guide](windows-installer.md)
+
 The script will:
 
 - Prompt for install path, port, bind address, timezone, and more
@@ -58,8 +72,7 @@ The script will:
     - **Arch Linux** (pacman)
     - **openSUSE** (zypper)
     - **macOS** (Homebrew)
-
-    Native installation is not supported on Windows. Use [Docker](docker.md) instead — the manual compose flow runs on native PowerShell with no extra tooling.
+    - **Windows 10/11** (PowerShell 5.1+, Git/Python via `winget`)
 
 !!! tip "Unattended Mode"
     For automation or CI, use the `--yes` flag to accept all defaults:
