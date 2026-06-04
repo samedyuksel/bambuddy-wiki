@@ -192,6 +192,13 @@ Model Context Protocol server that exposes Bambuddy's full REST API as tools for
 **Author:** [MrMebelMan](https://github.com/MrMebelMan) &middot; [Repository](https://github.com/MrMebelMan/bambuddy-mcp)
 </div>
 
+<div class="feature-card" markdown>
+### [:material-shield-key-outline: Print Concierge](https://github.com/dpdev69/print-concierge)
+Python MCP / CLI safety layer that sits between agent clients (Claude, Codex, Hermes, OpenClaw) and a Bambuddy server. Exposes a curated tool set for searching the archive, discovering models via 3DSEARCH, importing from MakerWorld / Printables / Thingiverse, slicing with explicit presets, hash-verifying outputs, and assembling deterministic print plans &mdash; but deliberately does **not** expose raw queue / start / pause / cancel. The only sensitive action is a scoped `queue_print_request(request_id)` that submits a pre-approved, plan-hash-bound request, with audit logging and Bambuddy's manual-start as the default. Talks to Bambuddy over the REST API with a least-privilege API key (`BAMBUDDY_BASE_URL` + `BAMBUDDY_API_KEY`). Ships a sandbox backend mode for no-hardware demos.
+
+**Author:** [dpdev69](https://github.com/dpdev69) &middot; [Repository](https://github.com/dpdev69/print-concierge)
+</div>
+
 </div>
 
 ---
