@@ -81,7 +81,7 @@ The virtual printer supports four modes:
 The first three are **server modes** — Bambuddy runs its own FTP/MQTT servers and receives files locally. **Proxy mode** is different — Bambuddy uses transparent TCP proxying to forward traffic to a real printer, with end-to-end TLS between the slicer and printer for most protocols.
 
 !!! tip "Server modes with a target printer mirror its live state to the slicer"
-    When you set a **target printer** on an Immediate / Review / Print Queue VP, the slicer sees the target's live AMS slots, FTS / dual-extruder routing, k-profiles, nozzle / temperature state, and the camera stream — same view a direct slicer connection would get, but with Bambuddy's queue / archive / review workflow on the receiving end. AMS load / dry / calibration commands from the slicer pass through to the real printer too. See [Live target-printer mirror](#live-target-printer-mirror) for setup and the access-code requirement for camera. If you don't set a target, the VP behaves as a pure file receiver with no live data — which is fine if you only need slice-and-archive.
+    When you set a **target printer** on an Immediate / Review / Print Queue VP, the slicer sees the target's live AMS slots, FTS / dual-extruder routing, k-profiles, nozzle / temperature state, and the camera stream — same view a direct slicer connection would get, but with Bambuddy's queue / archive / review workflow on the receiving end. AMS load / dry / calibration commands from the slicer pass through to the real printer too. See [Live target-printer mirror](#live-target-printer-mirror) for setup and the access-code rule (Bambuddy auto-derives the VP's access code from the target so the bridge can authenticate; the field becomes read-only in the card once a target is picked). If you don't set a target, the VP behaves as a pure file receiver with no live data — which is fine if you only need slice-and-archive.
 
 ---
 
@@ -98,7 +98,7 @@ Each virtual printer uses these ports on its dedicated bind IP:
 | SSDP | 2021 | UDP | Printer discovery (same LAN only, not needed for VPN/remote) |
 | MQTT | 8883 | TCP/TLS | Printer communication |
 | File Transfer | 6000 | TCP/TLS | Verify job & file upload tunnel (proxy mode) |
-| RTSP Camera | 322 | TCP/TLS | Camera streaming for X1/H2/P2 series (proxy mode, **and non-proxy modes when a target printer is configured** — required for the slicer's live camera view to work through the VP) |
+| RTSP Camera | 322 | TCP/TLS | Camera streaming for X1/H2/P2 series (proxy mode, **and non-proxy modes when a target printer is configured** — required for the slicer's live camera view to work through the VP). Bambuddy listens on the VP's dedicated bind IP and transparently passes the RTSPS session through to the real printer's `:322`, end-to-end TLS, same as proxy mode. |
 | FTPS | 990 | TCP/TLS | File transfer control |
 | FTP Data | 50000-51000 | TCP | File transfer passive data (widened from 50000-50100 in 0.2.5) |
 
@@ -1186,7 +1186,7 @@ This is what makes it possible to slice an FTS / dual-extruder file with the VP 
 
 **Setup:** in Settings → Virtual Printer, set the target printer for each Immediate / Review / Print Queue VP. The bridge starts automatically.
 
-**Access-code requirement for camera.** The slicer authenticates the camera RTSPS stream with whatever access code is stored in its profile for the device it bound to. For the camera to authenticate against the real printer, **the VP's access code must match the target printer's LAN access code**. Set them equal in Settings → Virtual Printer, then re-add the VP in the slicer so it picks up the new code. MQTT and FTP work either way; only the camera path needs the match because RTSPS auth happens between the slicer and the real printer's broker.
+**Access-code rule (auto-managed by Bambuddy).** The bridge forwards the slicer's MQTT and RTSPS auth bytes through to the real printer — the slicer holds **one** code in its profile (the one it bound the VP with), and that code has to satisfy both the VP's listener and the real printer at the other end of the bridge. The only way both pass is if the VP's code equals the real printer's code. **Bambuddy now derives the VP's access code from the target automatically**: when you pick a target printer in Settings → Virtual Printer, the VP's access-code field switches to read-only and inherits the printer's LAN access code. Changing the target re-syncs the code; re-add the VP in your slicer afterwards so it picks up the new value. Earlier Bambuddy releases let the codes diverge — a one-time startup migration silently fixes mismatched VPs on first launch after upgrade. If you didn't set a target, the VP has its own independent code (and the field is editable) — the bridge is off in that case, so there's no other side to match.
 
 **If you don't want a live mirror.** Leave the target printer unset, or use the VP without binding it to a real printer at all. The slicer will see synthetic stub state and you set filaments manually — the original "file receiver" behaviour, useful when you want to slice for a class of printer without picking a specific one yet.
 
