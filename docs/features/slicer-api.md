@@ -24,31 +24,28 @@ If you only slice from Bambu Studio / OrcaSlicer on your workstation and use Bam
 
 ## :material-cpu-64-bit: Platform requirements
 
-The sidecar runs whichever slicer's official AppImage you point it at &mdash; which means it inherits each slicer's upstream platform support.
+Both sidecar images are published as **pre-built `linux/amd64` images** on GHCR and Docker Hub. No local build is required — `docker compose up -d` pulls the image and starts the service.
 
-| Sidecar             | x86_64 / amd64 | ARM64 / aarch64 (RPi 4 / 5, Apple Silicon Linux, ARM cloud VMs) |
+| Sidecar             | linux/amd64 | linux/arm64 (RPi 4 / 5, Apple Silicon Linux, ARM cloud VMs) |
 |---------------------|:--------------:|:--------------------------------------------------------------:|
-| `orca-slicer-api` (default profile) | yes &mdash; [SoftFever AppImage](https://github.com/SoftFever/OrcaSlicer/releases) | **yes** &mdash; falls back to the [kldzj/orca-slicer-arm64](https://github.com/kldzj/orca-slicer-arm64) community AppImage automatically at build time |
-| `bambu-studio-api` (`--profile bambu`) | yes &mdash; [BambuLab AppImage](https://github.com/bambulab/BambuStudio/releases) | **no** &mdash; BambuLab does not publish an ARM64 AppImage |
+| `orca-slicer-api` (default profile) | yes &mdash; pre-built image | **no** &mdash; on hold pending an upstream AppImage extraction fix |
+| `bambu-studio-api` (`--profile bambu`) | yes &mdash; pre-built image | **no** &mdash; BambuLab does not publish an ARM64 AppImage |
 
-If `docker compose --profile bambu up -d` exits early with `ARM64 not supported — BambuStudio has no official ARM64 AppImage`, you're on an ARM host and the Bambu Studio variant cannot be built locally. Bambu Studio itself is x86_64-only on every platform (Linux, Windows, macOS Intel/Rosetta) and there is currently no public indication BambuLab plans to ship native ARM64 builds.
+Bambu Studio itself is x86_64-only on every platform (Linux, Windows, macOS Intel/Rosetta) and there is currently no public indication BambuLab plans to ship native ARM64 builds.
 
-The honest state of ARM64 today:
+The honest state of ARM64 today: **neither sidecar runs on ARM64 right now.** OrcaSlicer's community ARM64 AppImage extraction fails under QEMU build emulation, and even when it works the OrcaSlicer CLI has known bugs blocking most Bambu-authored 3MFs (see [OrcaSlicer mid-2026 CLI breakage](#orcaslicer-mid-2026-cli-breakage)). Bambu Studio CLI works but only on x86_64.
 
-- **OrcaSlicer builds on ARM64** via the community [kldzj/orca-slicer-arm64](https://github.com/kldzj/orca-slicer-arm64) AppImage, but **its CLI currently can't slice most Bambu-authored 3MFs** &mdash; see [OrcaSlicer mid-2026 CLI breakage](#orcaslicer-mid-2026-cli-breakage) below. Until those upstream bugs are fixed, OrcaSlicer is not a working substitute for Bambu Studio on any architecture, ARM64 included.
-- **Bambu Studio works** but only on x86_64.
-
-The one workaround that actually works right now: **run the sidecar on a separate x86_64 host** (mini-PC, NAS, old laptop, x86_64 cloud VM) and point Bambuddy at it via the **Sidecar URL** field. The sidecar does not need to run on the same machine as Bambuddy. Once OrcaSlicer's CLI breakage is resolved, the OrcaSlicer-on-ARM64 path becomes viable; that update will be called out in the changelog.
+The one workaround that actually works right now: **run the sidecar on a separate x86_64 host** (mini-PC, NAS, old laptop, x86_64 cloud VM) and point Bambuddy at it via the **Sidecar URL** field. The sidecar does not need to run on the same machine as Bambuddy.
 
 ---
 
 ## :material-rocket-launch: Quick start
 
-The sidecar lives in the optional `slicer-api/` folder of the Bambuddy repo. It is a self-contained Docker Compose stack:
+The sidecar lives in the optional `slicer-api/` folder of the Bambuddy repo. It is a self-contained Docker Compose stack that pulls pre-built images from GHCR:
 
 ```bash
 cd slicer-api/
-cp .env.example .env       # adjust ports / versions if you like
+cp .env.example .env       # adjust ports if you like
 
 # OrcaSlicer only (default profile):
 docker compose up -d
@@ -60,10 +57,10 @@ curl http://localhost:3001/health   # bambu-studio-api
 curl http://localhost:3003/health   # orca-slicer-api
 ```
 
-First build downloads the slicer's AppImage (~110 MB OrcaSlicer, ~220 MB Bambu Studio) and compiles the Node wrapper. Plan for **3&ndash;8 minutes per service**. Subsequent runs reuse the local image &mdash; instant start.
+First start pulls pre-built images from GHCR (~110 MB OrcaSlicer, ~220 MB Bambu Studio). No local build, no git in the BuildKit worker &mdash; works on **QNAP Container Station, Synology DSM**, and any other Docker environment without git pre-installed.
 
-!!! info "Sidecar updates aren't automatic"
-    The Compose file builds from the `bambuddy/profile-resolver` branch tip. A plain `docker compose up -d` keeps using your originally-built image, even when the branch advances upstream. To pick up new endpoints and fixes, see [Updating](#updating) and rebuild with `--no-cache --pull`.
+!!! info "Sidecar image channel"
+    The Compose file defaults to `SIDECAR_TAG=latest` (current stable). To pin to a specific version, set `SIDECAR_TAG=bambuddy-X.Y.Z` in `.env` &mdash; each Bambuddy stable release publishes a matching sidecar image tag (e.g. `bambuddy-0.2.5`).
 
 Then in Bambuddy:
 
@@ -249,15 +246,15 @@ Cosmetic. The bundled binary works fine; the wrapper just couldn't parse the ver
 The same wrapper bug also reports the `checks` field as `orcaslicer` for *both* sidecars (including `bambu-studio-api`). Both are cosmetic and don't indicate the wrong image &mdash; use the steps in the next section to confirm freshness.
 
 ### "Name cannot be empty" or "Only JSON files are allowed" when importing a `.bbscfg`
-Your sidecar image was built before 2026-05-13, when the `/profiles/bundle` endpoint landed on `bambuddy/profile-resolver` (it had previously lived only on a feature branch the compose file didn't reference). Older images route bundle uploads through the generic preset-upload handler, which either rejects with "Name cannot be empty" (no `name` form field) or "Only JSON files are allowed" (the JSON multer filter doesn't accept `.bbscfg`). Rebuild:
+Your sidecar image predates the `/profiles/bundle` endpoint (added 2026-05-13). Older images route bundle uploads through the generic preset-upload handler, which either rejects with "Name cannot be empty" (no `name` form field) or "Only JSON files are allowed" (the JSON multer filter doesn't accept `.bbscfg`). Pull the current image:
 
 ```bash
 cd slicer-api/
-docker compose --profile bambu build --no-cache --pull
+docker compose pull
 docker compose --profile bambu up -d
 ```
 
-`--pull` is the key flag &mdash; without it BuildKit may reuse the cached git context and you'll end up with the same image. The support bundle surfaces both error reasons starting with Bambuddy 0.2.5.
+The support bundle surfaces both error reasons starting with Bambuddy 0.2.5.
 
 ### Slice job stays "queued" forever
 Check the Bambuddy logs for connection errors to the sidecar URL. Common causes:
@@ -278,7 +275,14 @@ For 3MF inputs that hit the CLI bugs anyway, Bambuddy automatically retries with
 
 ## :material-source-fork: Sidecar source
 
-The Bambuddy `slicer-api/` Compose file builds both services from a fork of [AFKFelix/orca-slicer-api](https://github.com/AFKFelix/orca-slicer-api), branch `bambuddy/profile-resolver`. The fork patches:
+Both sidecar images are published to two registries:
+
+- GHCR: `ghcr.io/maziggy/orca-slicer-api` and `ghcr.io/maziggy/bambu-studio-api`
+- Docker Hub: `docker.io/maziggy/orca-slicer-api` and `docker.io/maziggy/bambu-studio-api`
+
+Each stable Bambuddy release publishes two tags per image: `:latest` (current stable) and `:bambuddy-X.Y.Z` (immutable pin matching the Bambuddy version).
+
+Both images are built from the [`maziggy/orca-slicer-api`](https://github.com/maziggy/orca-slicer-api) fork, branch `bambuddy/profile-resolver`. The fork patches:
 
 - **`inherits:` chain resolver** &mdash; walks user-cloned profiles to a root system profile
 - **`from: "User"` &rarr; `"system"` rewrite** &mdash; OrcaSlicer CLI's compatibility check rejects user-marked profiles
@@ -287,26 +291,34 @@ The Bambuddy `slicer-api/` Compose file builds both services from a fork of [AFK
 
 These patches are empirically required to slice real GUI exports without segfaulting the CLI. Once they land upstream, the Compose file can be flipped back to `ghcr.io/afkfelix/orca-slicer-api`.
 
-The Compose file uses Docker's git-build-context, so you don't need to clone the fork manually &mdash; Docker pulls the repo at build time.
+### Building from source (advanced)
+
+If you want to roll your own sidecar image &mdash; tweaking the resolver, testing a newer slicer AppImage, etc. &mdash; clone the fork and use Docker's git build context:
+
+```yaml
+# In docker-compose.yml, replace the `image:` line with:
+build:
+  context: https://github.com/maziggy/orca-slicer-api.git#bambuddy/profile-resolver
+  dockerfile: Dockerfile          # or Dockerfile.bambu-studio
+```
+
+This requires `git` in your Docker BuildKit worker. QNAP Container Station and Synology DSM do not ship git by default &mdash; on those platforms, stick with the pre-built images.
 
 ---
 
 ## :material-update: Updating
 
-Bump the slicer versions in `slicer-api/.env`, then:
-
 ```bash
 cd slicer-api/
-docker compose --profile bambu build --no-cache --pull
+docker compose pull
 docker compose --profile bambu up -d
 ```
 
-Both flags matter:
+That's it &mdash; Compose pulls the current `:latest` (or whatever `SIDECAR_TAG` you've pinned to in `.env`) and recreates the containers.
 
-- `--no-cache` is needed because the Dockerfile downloads the AppImage inline; Docker won't re-fetch on a version change otherwise.
-- `--pull` forces BuildKit to re-fetch the git context (the `bambuddy/profile-resolver` branch tip). Without it, an older cached git context will silently be reused even with `--no-cache`, leaving you on the same sidecar code you originally built &mdash; this is the most common reason "I rebuilt and it still doesn't work" reports surface.
+To roll back to the sidecar that shipped with a previous Bambuddy release, set `SIDECAR_TAG=bambuddy-X.Y.Z` in `.env` and re-run the two commands above.
 
-After the rebuild, the support package (Bambuddy 0.2.5+) records the sidecar's reported slicer version under `integrations.slicer_api.bambu_studio_version` / `orcaslicer_version`. Compare it against the value in `slicer-api/.env` to confirm the new image is the one actually running.
+After the update, the support package (Bambuddy 0.2.5+) records the sidecar's reported slicer version under `integrations.slicer_api.bambu_studio_version` / `orcaslicer_version`. Compare against the released image tag to confirm the new image is the one actually running.
 
 ### Orphan containers after a rebuild
 

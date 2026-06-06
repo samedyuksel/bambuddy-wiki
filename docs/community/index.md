@@ -133,6 +133,13 @@ Mobile Progressive Web App for reading and writing OpenTag3D NFC tags (NTAG213/2
 **Author:** [Poltavtcev](https://github.com/Poltavtcev) &middot; [Repository](https://github.com/Poltavtcev/spool-nfc-pwa)
 </div>
 
+<div class="feature-card" markdown>
+### [:material-console-line: bambuddy-cli](https://github.com/mailletf/bambuddy-cli)
+Terminal companion for assigning AMS slots and editing print-archive metadata without opening the web UI. Closes the AMS Lite gap &mdash; AMS Lite cannot read RFID, so third-party spools show up as occupied-but-unknown; the CLI calls Bambuddy's assignment API directly to map any inventory spool to any unit/slot. Also patches archived prints (cost, notes, tags, status, failure reason, external URL) from one-shot commands or an interactive picker. Talks to Bambuddy over the REST API with host + printer ID from `.env` or flags; shells out to `curl` to dodge a macOS IPv6 socket quirk.
+
+**Author:** [mailletf](https://github.com/mailletf) &middot; [Repository](https://github.com/mailletf/bambuddy-cli)
+</div>
+
 </div>
 
 ---
